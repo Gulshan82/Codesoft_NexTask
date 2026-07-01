@@ -1,0 +1,5 @@
+# Ignore sensitive files in backend
+.env
+node_modules/
+*.log
+.DS_Store
