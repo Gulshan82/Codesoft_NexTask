@@ -58,6 +58,18 @@ const TeamPage = () => {
     }
   };
 
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm("Are you sure you want to permanently remove this user? This will delete them from the database.")) {
+      try {
+        await api.delete(`/users/${userId}`);
+        setMembers(members.filter(m => m._id !== userId));
+      } catch (err) {
+        console.error('Failed to delete user:', err);
+        alert(err.response && err.response.data.message ? err.response.data.message : 'Failed to delete user.');
+      }
+    }
+  };
+
   const handleInviteSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -215,15 +227,24 @@ const TeamPage = () => {
                     {currentUser?.role === 'Admin' && (
                       <td className="px-6 py-4 text-right">
                         {member._id !== currentUser._id ? (
-                          <select
-                            value={member.role}
-                            onChange={(e) => handleRoleChange(member._id, e.target.value)}
-                            className="px-2.5 py-1 text-[11px] rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
-                          >
-                            <option value="Team Member">Team Member</option>
-                            <option value="Project Manager">Project Manager</option>
-                            <option value="Admin">Admin</option>
-                          </select>
+                          <div className="flex items-center justify-end gap-2.5">
+                            <select
+                              value={member.role}
+                              onChange={(e) => handleRoleChange(member._id, e.target.value)}
+                              className="px-2.5 py-1 text-[11px] rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                            >
+                              <option value="Team Member">Team Member</option>
+                              <option value="Project Manager">Project Manager</option>
+                              <option value="Admin">Admin</option>
+                            </select>
+                            <button
+                              onClick={() => handleDeleteUser(member._id)}
+                              className="p-1 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-[10px] text-slate-400 italic">Self (Protected)</span>
                         )}
