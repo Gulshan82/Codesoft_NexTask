@@ -44,6 +44,10 @@ const sendEmail = async (options) => {
     connectionTimeout: 8000, // 8 seconds timeout
     greetingTimeout: 8000,
     socketTimeout: 8000,
+    // Force IPv4 DNS resolution for Render compatibility
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    },
   });
 
   // Define email options
