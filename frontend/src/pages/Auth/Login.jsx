@@ -26,15 +26,11 @@ const Login = () => {
       dispatch(setCredentials({ user: data, token: data.token }));
       navigate('/');
     } catch (err) {
-      if (err.response && err.response.status === 403 && err.response.data.isVerified === false) {
-        navigate(`/verify-otp?email=${encodeURIComponent(email)}`);
-      } else {
-        setError(
-          err.response && err.response.data.message
-            ? err.response.data.message
-            : 'Invalid login credentials. Please try again.'
-        );
-      }
+      setError(
+        err.response && err.response.data.message
+          ? err.response.data.message
+          : 'Invalid login credentials. Please try again.'
+      );
     } finally {
       setLoading(false);
     }

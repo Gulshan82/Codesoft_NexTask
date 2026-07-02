@@ -24,13 +24,14 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await api.post('/auth/register', {
+      const { data } = await api.post('/auth/register', {
         name,
         email,
         password,
         role,
       });
-      navigate(`/verify-otp?email=${encodeURIComponent(email)}`);
+      dispatch(setCredentials({ user: data, token: data.token }));
+      navigate('/');
     } catch (err) {
       setError(
         err.response && err.response.data.message
