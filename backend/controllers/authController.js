@@ -40,9 +40,6 @@ const generateAndSendOTP = async (user) => {
   });
 };
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
 const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -81,6 +78,9 @@ const register = async (req, res) => {
       }
       res.status(500).json({ message: err.message || 'Registration failed during verification process. Please check your SMTP settings.' });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 // @desc    Auth user & get token
