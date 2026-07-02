@@ -6,6 +6,9 @@ const { errorHandler, notFound } = require('./middlewares/errorMiddleware');
 
 const app = express();
 
+// Trust reverse proxy (needed for express-rate-limit on Render/Vercel/etc.)
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet({
   crossOriginResourcePolicy: false, // allow loading local images on frontend
