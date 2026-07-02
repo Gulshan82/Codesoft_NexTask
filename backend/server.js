@@ -4,6 +4,9 @@ try {
 } catch (e) {
   console.warn('DNS override failed:', e.message);
 }
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 require('dotenv').config({ quiet: true });
 const app = require('./app');
