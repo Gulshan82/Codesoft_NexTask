@@ -22,21 +22,22 @@ const testDB = async () => {
     console.log('Connected successfully!');
 
     // Clean up test collections
-    await User.deleteMany({ email: /@test\.com$/ });
+    await User.deleteMany({ email: { $in: ['gk4644771@gmail.com', /@test\.com$/] } });
     console.log('Cleaned up previous test users.');
 
     // 1. Create a Test User (Admin)
     console.log('\n--- Test 1: User Registration ---');
     const adminUser = await User.create({
       name: 'Admin Tester',
-      email: 'admin@test.com',
-      password: 'testpassword123',
+      email: 'gk4644771@gmail.com',
+      password: 'Gulshan@#$123',
       role: 'Admin',
+      isVerified: true,
     });
     console.log(`Created User: ${adminUser.name} [Role: ${adminUser.role}]`);
 
     // Verify password compare works
-    const isMatch = await adminUser.comparePassword('testpassword123');
+    const isMatch = await adminUser.comparePassword('Gulshan@#$123');
     console.log('Password comparison check:', isMatch ? 'PASSED' : 'FAILED');
 
     // 2. Create a Test Project

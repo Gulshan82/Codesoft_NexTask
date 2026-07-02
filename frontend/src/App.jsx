@@ -13,6 +13,7 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
+import OTPVerify from './pages/Auth/OTPVerify';
 import Dashboard from './pages/Dashboard/Dashboard';
 import ProjectsList from './pages/Projects/ProjectsList';
 import ProjectDetails from './pages/Projects/ProjectDetails';
@@ -72,7 +73,7 @@ const App = () => {
     return 'NexTask';
   };
 
-  const isAuthRoute = ['/login', '/register', '/forgot-password'].some(p => location.pathname.startsWith(p)) || location.pathname.startsWith('/reset-password/');
+  const isAuthRoute = ['/login', '/register', '/forgot-password', '/verify-otp'].some(p => location.pathname.startsWith(p)) || location.pathname.startsWith('/reset-password/');
 
   if (isAuthRoute || (!isAuthenticated && (location.pathname === '/' || location.pathname === '/pricing'))) {
     return (
@@ -82,6 +83,7 @@ const App = () => {
           <Route path="/pricing" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-otp" element={<OTPVerify />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
 
 // Store active password reset tokens in memory for simplified flow (or schema).
 // To keep database clean and robust, we can add simple temp reset properties.
@@ -10,6 +11,34 @@ const crypto = require('crypto');
 // but since User model doesn't have resetToken, let's update password directly or use a mock reset.
 // Let's implement actual reset token logic. To do this, we can store resetToken in memory here:
 const resetTokens = new Map(); // token -> { userId, expires }
+
+// Helper to generate and send OTP
+const generateAndSendOTP = async (user) => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  user.verificationOTP = otp;
+  user.verificationOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  await user.save();
+
+  const message = `Welcome to NexTask! Your verification OTP is: ${otp}. It will expire in 10 minutes.`;
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #0b0f19; color: #f1f5f9;">
+      <h2 style="color: #8b5cf6; text-align: center; margin-bottom: 24px;">Welcome to NexTask</h2>
+      <p style="font-size: 16px; line-height: 1.6; color: #cbd5e1;">Thank you for registering. Please verify your email using the following One-Time Password (OTP):</p>
+      <div style="font-size: 32px; font-weight: 800; text-align: center; letter-spacing: 6px; padding: 20px; margin: 28px 0; background-color: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #a78bfa; border-radius: 16px; font-family: monospace;">
+        ${otp}
+      </div>
+      <p style="color: #64748b; font-size: 14px; text-align: center; margin-top: 24px;">This OTP is valid for 10 minutes. If you did not request this, please ignore this email.</p>
+    </div>
+  `;
+
+  await sendEmail({
+    email: user.email,
+    subject: 'NexTask Email Verification OTP',
+    message,
+    html,
+  });
+};
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -34,18 +63,15 @@ const register = async (req, res) => {
       email,
       password,
       role: registrationRole,
+      isVerified: false,
     });
 
+    // Generate & send OTP
+    await generateAndSendOTP(user);
+
     res.status(201).json({
-      _id: user._id,
-      name: user.name,
+      message: 'Registration successful! Verification OTP sent to your email.',
       email: user.email,
-      role: user.role,
-      avatar: user.avatar,
-      bio: user.bio,
-      subscriptionPlan: user.subscriptionPlan,
-      subscriptionExpires: user.subscriptionExpires,
-      token: generateToken(user._id),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -62,6 +88,16 @@ const login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.comparePassword(password))) {
+      // Check if user is verified
+      if (!user.isVerified) {
+        await generateAndSendOTP(user);
+        return res.status(403).json({
+          message: 'Your email is not verified. A new OTP has been sent to your email.',
+          email: user.email,
+          isVerified: false,
+        });
+      }
+
       res.json({
         _id: user._id,
         name: user.name,
@@ -163,10 +199,89 @@ const updatePassword = async (req, res) => {
   }
 };
 
+// @desc    Verify Registration OTP
+// @route   POST /api/auth/verify-otp
+// @access  Public
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Please provide email and OTP code' });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    if (user.verificationOTP !== otp || user.verificationOTPExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP code' });
+    }
+
+    // Mark as verified
+    user.isVerified = true;
+    user.verificationOTP = undefined;
+    user.verificationOTPExpires = undefined;
+    await user.save();
+
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      bio: user.bio,
+      subscriptionPlan: user.subscriptionPlan,
+      subscriptionExpires: user.subscriptionExpires,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Resend Verification OTP
+// @route   POST /api/auth/resend-otp
+// @access  Public
+const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Please provide email' });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    // Generate & send OTP
+    await generateAndSendOTP(user);
+
+    res.status(200).json({ message: 'A new OTP has been sent to your email.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   forgotPassword,
   resetPassword,
   updatePassword,
+  verifyOTP,
+  resendOTP,
 };

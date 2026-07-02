@@ -45,6 +45,16 @@ const userSchema = new mongoose.Schema({
   subscriptionExpires: {
     type: Date,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationOTP: {
+    type: String,
+  },
+  verificationOTPExpires: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
