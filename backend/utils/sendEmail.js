@@ -1,7 +1,4 @@
-const dns = require('dns');
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
-}
+const dns = require('dns').promises;
 const nodemailer = require('nodemailer');
 
 /**
@@ -32,9 +29,23 @@ const sendEmail = async (options) => {
     return { simulated: true };
   }
 
+  let smtpHost = process.env.SMTP_HOST;
+  const originalHost = smtpHost;
+
+  // Resolve IPv4 address of the SMTP host to bypass IPv6 ENETUNREACH errors on cloud platforms like Render
+  try {
+    const addresses = await dns.resolve4(smtpHost);
+    if (addresses && addresses.length > 0) {
+      smtpHost = addresses[0];
+      console.log(`Resolved SMTP host ${originalHost} to IPv4: ${smtpHost}`);
+    }
+  } catch (dnsErr) {
+    console.warn(`DNS lookup failed for ${originalHost}, falling back to hostname:`, dnsErr.message);
+  }
+
   // Create transporter
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: smtpHost,
     port: parseInt(process.env.SMTP_PORT, 10) || 587,
     secure: parseInt(process.env.SMTP_PORT, 10) === 465, // true for 465, false for other ports
     auth: {
@@ -44,10 +55,10 @@ const sendEmail = async (options) => {
     connectionTimeout: 8000, // 8 seconds timeout
     greetingTimeout: 8000,
     socketTimeout: 8000,
-    // Force IPv4 DNS resolution for Render compatibility
-    lookup: (hostname, options, callback) => {
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
+    tls: {
+      servername: originalHost, // Crucial: validates the certificate against the domain name even when connecting via IP
+      rejectUnauthorized: true,
+    }
   });
 
   // Define email options
