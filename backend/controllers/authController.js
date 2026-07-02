@@ -32,12 +32,21 @@ const generateAndSendOTP = async (user) => {
     </div>
   `;
 
-  await sendEmail({
-    email: user.email,
-    subject: 'NexTask Email Verification OTP',
-    message,
-    html,
-  });
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: 'NexTask Email Verification OTP',
+      message,
+      html,
+    });
+  } catch (emailError) {
+    console.error('⚠️ SMTP Outgoing Email Failed! Error:', emailError.message);
+    console.log('\n==================================================');
+    console.log('📬 [SMTP FALLBACK - EMAIL PRINTED TO LOGS]');
+    console.log(`To:      ${user.email}`);
+    console.log(`OTP:     ${otp}`);
+    console.log('==================================================\n');
+  }
 };
 
 const register = async (req, res) => {
@@ -65,18 +74,15 @@ const register = async (req, res) => {
         isVerified: false,
       });
 
-      // Generate & send OTP
+      // Generate & send OTP (gracefully logs to console if SMTP fails)
       await generateAndSendOTP(user);
 
       res.status(201).json({
-        message: 'Registration successful! Verification OTP sent to your email.',
+        message: 'Registration successful! Verification OTP sent to your email (if SMTP fails, check Render logs).',
         email: user.email,
       });
     } catch (err) {
-      if (user) {
-        await User.deleteOne({ _id: user._id });
-      }
-      res.status(500).json({ message: err.message || 'Registration failed during verification process. Please check your SMTP settings.' });
+      res.status(500).json({ message: err.message || 'Registration failed.' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
