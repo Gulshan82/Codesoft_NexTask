@@ -20,9 +20,16 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please provide a password'],
+    required: function() {
+      return !this.googleId;
+    },
     minlength: 6,
     select: false,
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
   },
   role: {
     type: String,
@@ -70,6 +77,7 @@ userSchema.pre('save', async function () {
 
 // Compare password
 userSchema.methods.comparePassword = async function (enteredPassword) {
+  if (!this.password) return false;
   if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$') && !this.password.startsWith('$2y$')) {
     return enteredPassword === this.password;
   }

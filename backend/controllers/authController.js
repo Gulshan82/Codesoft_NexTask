@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
+
 
 // Store active password reset tokens in memory for simplified flow (or schema).
 // To keep database clean and robust, we can add simple temp reset properties.
@@ -163,10 +165,79 @@ const updatePassword = async (req, res) => {
   }
 };
 
+// @desc    Google Sign-In / Sign-Up
+// @route   POST /api/auth/google
+// @access  Public
+const googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: 'Google credential token is required' });
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return res.status(500).json({ message: 'Google Client ID is not configured on the server' });
+    }
+
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: clientId,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email not provided by Google account' });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // If user exists but googleId is not linked, link it
+      if (!user.googleId) {
+        user.googleId = googleId;
+        if (!user.avatar && picture) {
+          user.avatar = picture;
+        }
+        user.isVerified = true;
+        await user.save();
+      }
+    } else {
+      // Create new user via Google auth
+      user = await User.create({
+        name: name || email.split('@')[0],
+        email,
+        googleId,
+        avatar: picture || '',
+        isVerified: true,
+        role: 'Team Member',
+      });
+    }
+
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      bio: user.bio,
+      subscriptionPlan: user.subscriptionPlan,
+      subscriptionExpires: user.subscriptionExpires,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    res.status(400).json({ message: 'Google authentication failed: ' + error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   forgotPassword,
   resetPassword,
   updatePassword,
+  googleLogin,
 };

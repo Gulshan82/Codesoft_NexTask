@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { setCredentials } from '../../features/authSlice';
 import api from '../../services/api';
 import { FolderKanban, Lock, Mail, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import GlassCard from '../../components/UI/GlassCard';
+import { loadGoogleScript } from '../../utils/googleAuth';
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -15,6 +16,62 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleGoogleLogin = async (response) => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/auth/google', { token: response.credential });
+      dispatch(setCredentials({ user: data, token: data.token }));
+      navigate('/');
+    } catch (err) {
+      setError(
+        err.response && err.response.data.message
+          ? err.response.data.message
+          : 'Google Sign-In failed. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (!clientId) {
+      console.warn('VITE_GOOGLE_CLIENT_ID is not configured in .env file.');
+      return;
+    }
+
+    loadGoogleScript().then((google) => {
+      if (!isMounted || !google) return;
+
+      try {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleLogin,
+        });
+
+        const btnElement = document.getElementById('googleBtn');
+        if (btnElement) {
+          google.accounts.id.renderButton(btnElement, {
+            theme: 'filled_dark',
+            size: 'large',
+            width: 382,
+            text: 'continue_with',
+            shape: 'rectangular',
+          });
+        }
+      } catch (err) {
+        console.error('Failed to initialize Google Sign-in', err);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -224,6 +281,23 @@ const Login = () => {
                   'Sign In'
                 )}
               </button>
+
+              {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                <>
+                  <div className="relative my-4 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-800/85"></div>
+                    </div>
+                    <span className="relative px-3 text-slate-500 text-[10px] uppercase font-bold tracking-wider bg-[#0b101f] dark:bg-[#0c1221]">
+                      Or continue with
+                    </span>
+                  </div>
+
+                  <div className="flex justify-center w-full min-h-[44px]">
+                    <div id="googleBtn" className="w-full flex justify-center"></div>
+                  </div>
+                </>
+              )}
 
               <div className="text-center pt-2 text-xs text-slate-400">
                 Don't have an account?{' '}

@@ -5,6 +5,7 @@ const {
   forgotPassword,
   resetPassword,
   updatePassword,
+  googleLogin,
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
 const { authLimiter } = require('../middlewares/rateLimiter');
@@ -16,5 +17,6 @@ router.post('/login', authLimiter, login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
 router.put('/update-password', protect, updatePassword);
+router.post('/google', authLimiter, googleLogin);
 
 module.exports = router;
