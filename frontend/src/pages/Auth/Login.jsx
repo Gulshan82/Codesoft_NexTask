@@ -37,12 +37,30 @@ const Login = () => {
 
   useEffect(() => {
     let isMounted = true;
+    let resizeListener = null;
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     if (!clientId) {
       console.warn('VITE_GOOGLE_CLIENT_ID is not configured in .env file.');
       return;
     }
+
+    const renderGoogleButton = (google) => {
+      const btnElement = document.getElementById('googleBtn');
+      if (btnElement) {
+        btnElement.innerHTML = '';
+        const parentWidth = btnElement.parentElement ? btnElement.parentElement.offsetWidth : 382;
+        const calculatedWidth = Math.max(200, Math.min(400, parentWidth));
+
+        google.accounts.id.renderButton(btnElement, {
+          theme: 'filled_dark',
+          size: 'large',
+          width: calculatedWidth,
+          text: 'continue_with',
+          shape: 'rectangular',
+        });
+      }
+    };
 
     loadGoogleScript().then((google) => {
       if (!isMounted || !google) return;
@@ -53,16 +71,12 @@ const Login = () => {
           callback: handleGoogleLogin,
         });
 
-        const btnElement = document.getElementById('googleBtn');
-        if (btnElement) {
-          google.accounts.id.renderButton(btnElement, {
-            theme: 'filled_dark',
-            size: 'large',
-            width: 382,
-            text: 'continue_with',
-            shape: 'rectangular',
-          });
-        }
+        renderGoogleButton(google);
+
+        resizeListener = () => {
+          renderGoogleButton(google);
+        };
+        window.addEventListener('resize', resizeListener);
       } catch (err) {
         console.error('Failed to initialize Google Sign-in', err);
       }
@@ -70,6 +84,9 @@ const Login = () => {
 
     return () => {
       isMounted = false;
+      if (resizeListener) {
+        window.removeEventListener('resize', resizeListener);
+      }
     };
   }, []);
 
