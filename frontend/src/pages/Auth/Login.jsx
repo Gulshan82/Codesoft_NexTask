@@ -49,8 +49,9 @@ const Login = () => {
       const btnElement = document.getElementById('googleBtn');
       if (btnElement) {
         btnElement.innerHTML = '';
-        const parentWidth = btnElement.parentElement ? btnElement.parentElement.offsetWidth : 382;
-        const calculatedWidth = Math.max(200, Math.min(400, parentWidth));
+        const parentWidth = btnElement.parentElement ? btnElement.parentElement.offsetWidth : 280;
+        // Max width 280px, and subtract a bit for margins on small screen widths
+        const calculatedWidth = Math.max(200, Math.min(280, parentWidth - 24));
 
         google.accounts.id.renderButton(btnElement, {
           theme: 'filled_dark',
